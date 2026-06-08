@@ -16,6 +16,8 @@ public class ScrapeJobService {
 
     private final ScrapeJobRepository repository;
 
+    private final RabbitMQProducer producer;
+
     public ScrapeJob createJob(CreateJobRequest request) {
 
         ScrapeJob job = ScrapeJob.builder()
@@ -26,6 +28,16 @@ public class ScrapeJobService {
                 .updatedAt(LocalDateTime.now())
                 .build();
 
-        return repository.save(job);
+        ScrapeJob savedJob = repository.save(job);
+
+        try {
+            producer.sendMessage(savedJob.getTargetUrl());
+        } catch (Exception e) {
+            System.out.println(
+                "RabbitMQ Error: " + e.getMessage()
+            );
+        }
+
+        return savedJob;
     }
 }
