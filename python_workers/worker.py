@@ -1,6 +1,7 @@
 import os
 import pika
 import requests
+from fake_useragent import UserAgent
 from bs4 import BeautifulSoup
 from tenacity import (
     retry,
@@ -11,6 +12,7 @@ from tenacity import (
 from db import save_scraped_data
 
 WORKER_ID = os.getpid()
+ua = UserAgent()
 
 QUEUE_NAME = "scrape_jobs_queue"
 
@@ -40,9 +42,18 @@ print(f"Worker {WORKER_ID} waiting for messages...")
 def scrape_website(url):
 
     try:
+        headers = {
+            "User-Agent": ua.random
+        }
+        
+        print(
+            f"Worker {WORKER_ID} using agent: "
+            f"{headers['User-Agent']}"
+        )
 
         response = requests.get(
             url,
+            headers=headers,
             timeout=10
         )
 
@@ -57,7 +68,9 @@ def scrape_website(url):
 
         title = soup.title.string if soup.title else "No Title"
 
-        print(f"Page Title: {title}")
+        print(
+            f"Worker {WORKER_ID} scraped title: {title}"
+        )
 
         save_scraped_data(
             url,
@@ -100,12 +113,12 @@ def callback(ch, method, properties, body):
     except RetryError:
 
         print(
-            f"FINAL FAILURE AFTER RETRIES: {url}"
+            f"Worker {WORKER_ID} - FINAL FAILURE AFTER RETRIES: {url}"
         )
 
     except Exception as e:
 
-        print(f"Unexpected Worker Error: {e}")
+        print(f"Worker {WORKER_ID} - Unexpected Worker Error: {e}")
 
 channel.basic_consume(
     queue=QUEUE_NAME,

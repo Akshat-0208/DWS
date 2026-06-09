@@ -3,3 +3,4 @@ requests
 beautifulsoup4
 tenacity
 psycopg2-binary
+fake-useragent
